@@ -5,5 +5,10 @@
 __pycache__
 *.pyc
 
+# ignore for packaging
+build/
+dist/
+*.egg-info/
+
 # others
 .vscode
