@@ -1,0 +1,21 @@
+syntax = "proto2";
+
+message Document {
+  required int64 doc_id = 1;
+
+  message Links {
+    repeated int64 backward = 1;
+    repeated int64 forward = 2;
+  }
+  optional Links links = 2;
+
+  message Name {
+    message Language {
+      required string code = 1;
+      optional string country = 2;
+    }
+    repeated Language language = 1;
+    optional string url = 2;
+  }
+  repeated Name name = 3;
+}

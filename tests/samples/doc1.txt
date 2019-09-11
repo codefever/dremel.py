@@ -1,0 +1,26 @@
+doc_id:10
+links {
+  forward: 20
+  forward: 40
+  forward: 60
+}
+name {
+  language {
+    code: 'en-us'
+    country: 'us'
+  }
+  language {
+    code: 'en' 
+  }
+  url: 'http://A'
+}
+name {
+  url: 'http://B'
+}
+name {
+  language {
+    code: 'en-gb'
+    country: 'gb'
+  }
+}
+

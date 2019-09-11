@@ -1,0 +1,9 @@
+doc_id: 20
+links {
+  backward: 10
+  backward: 30
+  forward: 80
+}
+name {
+  url: 'http://C'
+}

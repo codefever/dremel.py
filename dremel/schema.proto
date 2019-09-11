@@ -1,0 +1,24 @@
+syntax = "proto3";
+package dremel;
+
+message Schema {
+  repeated SchemaFieldDescriptor field_descriptor = 1;
+  SchemaFieldGraph field_graph = 2;
+}
+
+message SchemaFieldGraph {
+  message Edge {
+    string from_field = 1;
+    repeated string to_fields = 2;
+  }
+  repeated Edge edge = 1;
+}
+
+// Save some significant properties from g_pb.FieldDescriptor
+message SchemaFieldDescriptor {
+  string path = 1;
+  int32 cpp_type = 2;
+  int32 label = 3;
+  int32 max_repetition_level = 4;
+  int32 definition_level = 5;
+}
