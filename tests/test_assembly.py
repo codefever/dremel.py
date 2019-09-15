@@ -8,7 +8,7 @@ from .document_pb2 import Document
 from dremel.writer import new_message_writer
 from dremel.assembly import MessageAssemblyBuilder, assemble, construct_fsm
 from dremel.simple import create_simple_storage
-from .utils import create_test_storage, read_docs
+from .utils import create_test_storage, read_docs, create_random_doc
 
 # logging.basicConfig(level=logging.DEBUG)
 
@@ -32,3 +32,13 @@ class AssemblyTest(unittest.TestCase):
         self.assertEqual(str(docs[0]), str(msgs[0]))
         self.assertEqual(str(docs[1]), str(msgs[1]))
         pprint.pprint(msgs)
+
+    def test_ramdom_documents(self):
+        docs = [create_random_doc() for i in range(100)]
+        storage = create_simple_storage(Document.DESCRIPTOR, docs)
+        builder = MessageAssemblyBuilder(storage.field_graph, Document)
+        assemble(storage, builder)
+        msgs = builder.get_msgs()
+        self.assertEqual(len(docs), len(msgs))
+        for i, msg in enumerate(msgs):
+            self.assertEqual(str(docs[i]), str(msg))
