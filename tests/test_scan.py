@@ -1,29 +1,15 @@
 #!/usr/bin/env python
 
-import os
 import unittest
 
-from google.protobuf import text_format
-
-from .document_pb2 import *
-from dremel.simple import create_simple_storage
 from dremel.reader import scan
 from dremel.field_graph import FieldGraphError
-
-
-def read_docs():
-    sample_dir = os.path.join(os.path.dirname(__file__), 'samples')
-    files = os.listdir(sample_dir)
-    for f in files:
-        with open(os.path.join(sample_dir, f)) as fd:
-            doc = Document()
-            text_format.Merge(fd.read(), doc)
-            yield doc
+from .utils import create_test_storage
 
 
 class ScanTest(unittest.TestCase):
     def setUp(self):
-        self.storage = create_simple_storage(Document.DESCRIPTOR, read_docs())
+        self.storage = create_test_storage()
 
     def test_create(self):
         for values, fetch_level in scan(self.storage, ['doc_id', 'links.backward']):

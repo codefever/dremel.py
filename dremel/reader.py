@@ -3,7 +3,7 @@
 import typing
 
 from dremel.consts import *
-from dremel.field_graph import FieldGraph
+from dremel.field_graph import FieldGraph, FieldNode
 from dremel.schema_pb2 import SchemaFieldDescriptor
 
 
@@ -19,6 +19,10 @@ class FieldValueMixin(object):
     def descriptor(self) -> SchemaFieldDescriptor:
         raise NotImplementedError()
 
+    @property
+    def field_node(self) -> FieldNode:
+        raise NotImplementedError()
+
     def repetition_level(self) -> int:
         raise NotImplementedError()
 
@@ -30,6 +34,9 @@ class FieldValueMixin(object):
 
     def value(self) -> typing.Any:
         raise NotImplementedError()
+
+    def __repr__(self) -> str:
+        return f'<FieldValue:{self.descriptor.path}, R={self.repetition_level()}, NR={self.next_repetition_level()} D={self.definition_level()} V={self.value()}>'
 
 
 class FieldReader(FieldValueMixin):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import logging
-from google.protobuf.descriptor import *
+from google.protobuf.descriptor import Descriptor, FieldDescriptor
 
 from dremel.consts import *
 from dremel.node import Node, CompositeNode

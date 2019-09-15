@@ -18,12 +18,26 @@ class FieldNode(CompositeNode):
     def __init__(self, descriptor : SchemaFieldDescriptor):
         super().__init__()
         self._descriptor = descriptor
+        self._field_index = None
 
     @property
     def descriptor(self) -> SchemaFieldDescriptor:
         return self._descriptor
 
+    @property
+    def name(self) -> str:
+        return self._descriptor.path.split('.')[-1]
+
+    @property
+    def field_index(self) -> int:
+        return self._field_index
+
+    def set_field_index(self, index: int):
+        assert self._field_index is None and self.is_leaf()
+        self._field_index = index
+
     def is_leaf(self):
+        # BUG(me): root error?
         return self._descriptor.cpp_type not in (
             FieldDescriptor.TYPE_GROUP, FieldDescriptor.TYPE_MESSAGE)
 
@@ -32,6 +46,32 @@ class FieldNode(CompositeNode):
         d = self.descriptor.definition_level
         return f'<FieldNode:{self.descriptor.path} leaf:{self.is_leaf()} R={r}, D={d}>'
 
+    def lowest_common_ancestor_node_with(self, other):
+        a = self._get_path_to_root()[::-1]
+        b = other._get_path_to_root()[::-1]
+        if a[0] != b[0]:
+            raise FieldGraphError('Nodes from different graph.')
+        common = a[0]
+        for i in range(1, min(len(a), len(b))):
+            if a[i] != b[i]: break
+            common = a[i]
+        return common
+
+    def common_repetition_level_with(self, other):
+        return self.lowest_common_ancestor_node_with(other).descriptor.max_repetition_level
+
+    def _get_path_to_root(self):
+        return self.get_path_to(None)
+
+    def get_path_to(self, target):
+        nodes = []
+        current = self
+        while current and current != target:
+            nodes.append(current)
+            current = current.parent
+        if target is not None and current != target:
+            raise FieldGraphError(f'No path to target: {target}')
+        return nodes
 
 class FieldGraph(object):
     """ FieldGraph remove the dependency of g_pb.Descriptor. """
@@ -40,13 +80,15 @@ class FieldGraph(object):
         self._fields = dict()
         def _(f): self._fields[f.descriptor.path] = f
         self._root.node_accept(_)
+        for i, node in enumerate(self._root.leaf_nodes):
+            node.set_field_index(i)
 
     @property
     def root(self):
         return self._root
 
     def list_fields(self):
-        return [v for _,v in self._fields.items()]
+        return list(self._fields.values())
 
     def get_field(self, name) -> FieldNode:
         return self._fields.get(name)

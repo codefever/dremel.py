@@ -1,24 +1,11 @@
 #!/usr/bin/env python
 
-import os
 import unittest
 
-from google.protobuf import text_format
-
-from .document_pb2 import *
-from dremel.simple import create_simple_storage
 from .test_writer import (DOCID, LINKS_BACKWARD, LINKS_FORWARD, NAME_URL,
                           NAME_LANGUAGE_CODE, NAME_LANGUAGE_COUNTRY)
+from .utils import create_test_storage
 
-
-def read_docs():
-    sample_dir = os.path.join(os.path.dirname(__file__), 'samples')
-    files = os.listdir(sample_dir)
-    for f in files:
-        with open(os.path.join(sample_dir, f)) as fd:
-            doc = Document()
-            text_format.Merge(fd.read(), doc)
-            yield doc
 
 def to_rdv(field_reader):
     ret = []
@@ -37,7 +24,7 @@ def to_rdv(field_reader):
 
 class SimpleBridgeTest(unittest.TestCase):
     def test_create(self):
-        storage = create_simple_storage(Document.DESCRIPTOR, read_docs())
+        storage = create_test_storage()
         self.assertIsNotNone(storage.field_graph)
         self.assertIsNotNone(storage.create_field_reader('__root__.doc_id'))
         self.assertIsNone(storage.create_field_reader('__root__'))

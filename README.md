@@ -47,11 +47,10 @@ There's also a simple bridge which provides an implementation for RDV storage.
 from dremel import simple, reader
 from document_pb2 import Document
 
-# load messages from somewhere
+# create storage by the bridge
 msgs = [...]
-
-# create storage
 storage = simple.create_simple_storage(Document.DESCRIPTOR, msgs)
+# or create your own storage
 
 # scan!
 for values, _ in reader.scan(storage, ['doc_id', 'name.url', 'name.language.code']):
@@ -62,4 +61,16 @@ for values, _ in reader.scan(storage, ['doc_id', 'name.url', 'name.language.code
 See also: `tests/test_scan.py`.
 
 ### Assembly
-TBD.
+```python
+from dremel import assembly
+from document_pb2 import Document
+
+# create your own storage
+storage = ...
+
+# assemble!
+builder = assembly.MessageAssemblyBuilder(storage.field_graph, Document)
+assembly.assemble(storage, builder)
+msgs = builder.get_msgs()  # <-results
+```
+See also: `tests/test_assembly.py`.

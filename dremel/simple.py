@@ -6,6 +6,7 @@ import typing
 from google.protobuf.message import Message
 from google.protobuf.descriptor import Descriptor
 
+from dremel.field_graph import FieldNode
 from dremel.writer import new_message_writer
 from dremel.reader import FieldStorage, FieldReader, SchemaFieldDescriptor, ReadError
 
@@ -35,7 +36,7 @@ class SimpleFieldStorage(FieldStorage):
     def create_field_reader(self, field_path: str) -> FieldReader:
         field_node = self._field_graph.get_field(field_path)
         if field_path in self._col_data and field_node:
-            return SimpleFieldReader(self._col_data[field_path], field_node.descriptor)
+            return SimpleFieldReader(self._col_data[field_path], field_node)
         return None
 
     def list_fields(self) -> typing.List[str]:
@@ -47,15 +48,19 @@ class SimpleFieldStorage(FieldStorage):
 
 
 class SimpleFieldReader(FieldReader):
-    def __init__(self, col, desc):
+    def __init__(self, col, node):
         super().__init__()
         self._col = col
-        self._desc = desc
+        self._node = node
         self._pos = -1  # need an initial fetch()/next()
 
     @property
     def descriptor(self) -> SchemaFieldDescriptor:
-        return self._desc
+        return self._node.descriptor
+
+    @property
+    def field_node(self) -> FieldNode:
+        return self._node
 
     def repetition_level(self) -> int:
         if not self.done():
