@@ -2,9 +2,12 @@
 
 import os
 import random
+
 from google.protobuf import text_format
+from google.protobuf.descriptor import Descriptor, FieldDescriptor
 
 from .document_pb2 import Document
+from dremel.consts import *
 from dremel.simple import create_simple_storage
 
 def read_docs():
@@ -16,6 +19,27 @@ def read_docs():
             text_format.Merge(fd.read(), doc)
             yield doc
 
+def trim_doc(doc, fields):
+    paths = {ROOT}
+    for f in fields:
+        p = ROOT
+        for seg in f.split('.'):
+            p += '.' + seg
+            paths.add(p)
+
+    def _trim(msg, root):
+        for f,v in msg.ListFields():
+            p = f'{root}.{f.name}'
+            if p not in paths:
+                msg.ClearField(f.name)
+                continue
+            if f.type in (FieldDescriptor.TYPE_GROUP, FieldDescriptor.TYPE_MESSAGE):
+                if f.label == FieldDescriptor.LABEL_REPEATED:
+                    for e in v: _trim(e, p)
+                else:
+                    _trim(v, p)
+        return msg
+    return _trim(doc, ROOT)
 
 def _random_string(n):
     chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/+_(*^%$#@!~<>?)'

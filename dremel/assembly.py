@@ -62,19 +62,12 @@ class MessageAssemblyBuilder(AssemblyBuilder):
     def assign_value(self, field: FieldValueMixin):
         logging.debug(f'Move from: {self._stack[-1][1].descriptor.path} to: {field.field_node.descriptor.path}')
         logging.debug(f'Value: {field}')
-        # Consider:
-        #  message A {
-        #    repeated B b = 1;
-        #    message B {
-        #      repeated int i = 1;
-        #    }
-        #  }
 
         # move up to level
         current_node = field.field_node
         barrier = current_node.lowest_common_ancestor_node_with(self._stack[-1][1])
-        # When reverse links are found, some repetition levels should be restarted.
-        if self._last_node is not None and current_node.field_index < self._last_node.field_index:
+        # When back links are found, some repetition levels should be restarted.
+        if self._last_node is not None and current_node.field_index <= self._last_node.field_index:
             while barrier != self._field_graph.root and barrier.descriptor.max_repetition_level >= field.repetition_level():
                 barrier = barrier.parent
         logging.debug(f'Barrier: {barrier}')
@@ -122,7 +115,7 @@ def _dfs(graph: FieldGraph, fields=None):
     return [node for node in graph.root.leaf_nodes if field_set is None or node.descriptor.path in field_set]
 
 
-FSM = typing.Dict[typing.Tuple[FieldNode, int], FieldNode]
+FSM = typing.Dict[FieldNode, typing.List[FieldNode]]
 
 
 def construct_fsm(graph: FieldGraph, fields=None, end_node=None) -> typing.Tuple[FSM, typing.List[FieldNode]]:
@@ -133,18 +126,28 @@ def construct_fsm(graph: FieldGraph, fields=None, end_node=None) -> typing.Tuple
         max_level = current.descriptor.max_repetition_level
         barrier = field_nodes[i+1] if i+1 < len(field_nodes) else end_node
         barrier_level = current.common_repetition_level_with(barrier) if barrier else 0
+        logging.debug(f'Field: {current}')
+        logging.debug(f'Barrier: {barrier} =>{barrier_level}')
 
+        to_fields = [None] * (max_level+1)
+
+        # TODO(me): Can optimize by caching for the previous one?
         pre_fields = [f for f in field_nodes[:i+1] if f.descriptor.max_repetition_level > barrier_level]
         for pre_field in pre_fields:
             back_level = current.common_repetition_level_with(pre_field)
-            states.setdefault((current, back_level), pre_field)
+            if to_fields[back_level] is None:
+                to_fields[back_level] = pre_field
+                logging.debug(f'PreField: {pre_field} =>{back_level}')
 
-        for level in range(barrier_level+1, max_level+1):
-            if (current, level) not in states:
-                states[(current, level)] = states[(current, level-1)]
+        # Well, really opposite to the description in paper...
+        for level in range(max_level, barrier_level, -1):
+            if to_fields[level] is None:
+                to_fields[level] = to_fields[level+1]
 
         for level in range(0, barrier_level+1):
-            states[(current, level)] = barrier
+            to_fields[level] = barrier
+
+        states[current] = to_fields
 
     return states, field_nodes
 
@@ -160,7 +163,11 @@ def assemble(storage: FieldStorage, builder: AssemblyBuilder, fields=None):
 
 def _assemble(fsm: FSM, field_readers: typing.List[FieldReader], builder: AssemblyBuilder):
     reader_map = dict((f.descriptor.path, f) for f in field_readers)
-    fsm_readers = dict(((reader_map[k[0].descriptor.path], k[1]), reader_map[v.descriptor.path] if v else None) for k,v in fsm.items())
+    fsm_readers = dict()
+    for k,v in fsm.items():
+        key = reader_map[k.descriptor.path]
+        values = [reader_map[e.descriptor.path] if e else None for e in v]
+        fsm_readers[key] = values
 
     def _read_message():
         reader = field_readers[0]
@@ -175,7 +182,7 @@ def _assemble(fsm: FSM, field_readers: typing.List[FieldReader], builder: Assemb
             builder.assign_value(reader)
 
             # go to next reader
-            reader = fsm_readers.get((reader, reader.next_repetition_level()))
+            reader = fsm_readers.get(reader)[reader.next_repetition_level()]
         builder.done()
         return True
 
